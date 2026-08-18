@@ -8,6 +8,11 @@ build:
 vet:
 	go vet ./...
 
+# Escaneo de vulnerabilidades (govulncheck) con una toolchain parcheada.
+# Requiere: go install golang.org/x/vuln/cmd/govulncheck@latest
+vuln:
+	GOTOOLCHAIN=go1.26.6 govulncheck ./...
+
 # Ejecuta todos los tests.
 test:
 	go test ./...
