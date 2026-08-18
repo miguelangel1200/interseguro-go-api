@@ -25,6 +25,13 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
+      - name: Debug auth
+        run: |
+          echo "=== CREDS FILE ==="
+          cat "${GOOGLE_GHA_CREDS_PATH:-$GOOGLE_APPLICATION_CREDENTIALS}" 2>&1 || true
+          echo "=== gcloud auth print-access-token ==="
+          gcloud auth print-access-token --verbosity=debug 2>&1 || true
+
       - name: Build & push image to Artifact Registry
         run: gcloud builds submit --tag "${REGION}-docker.pkg.dev/${PROJECT_ID}/interseguro-go-api/interseguro-go-api:latest" .
         env:
