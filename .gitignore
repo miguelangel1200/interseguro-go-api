@@ -1,0 +1,10 @@
+# Build
+bin/
+*.exe
+
+# Logs
+*.log
+
+# IDE
+.idea/
+.vscode/
