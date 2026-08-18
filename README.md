@@ -40,3 +40,23 @@ El script construye la imagen con Cloud Build y la sube a Artifact Registry:
 go run ./cmd
 # o junto con node-api: docker compose up (desde interseguro-infra)
 ```
+
+## Tests y cobertura
+
+```bash
+make test        # go test ./...
+make test-cover  # tests + cobertura agregada (>/internal/...); umbral objetivo 85%+
+make cover-html  # reporte HTML de cobertura
+```
+
+Organización de los tests por capa:
+
+| Paquete                       | Archivos de test                                     |
+|-------------------------------|------------------------------------------------------|
+| `internal/domain`             | `matrix_ops_test.go`, `domain_test.go`               |
+| `internal/application/services`| `matrix_service_test.go` (mock del puerto de salida) |
+| `internal/infrastructure/http`| `handler_test.go`, `process_test.go`, `auth_test.go`, `error_test.go` |
+| `internal/infrastructure/remote`| `node_client_test.go` (con `httptest.Server`)      |
+
+La cobertura se mide sobre `./internal/...`; `cmd/main.go` queda fuera por ser
+únicamente el punto de entrada de wiring (estándar en proyectos Go).

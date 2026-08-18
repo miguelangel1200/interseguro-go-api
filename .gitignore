@@ -2,6 +2,10 @@
 bin/
 *.exe
 
+# Cobertura
+coverage.out
+coverage.html
+
 # Logs
 *.log
 
