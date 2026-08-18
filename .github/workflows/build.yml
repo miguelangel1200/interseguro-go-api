@@ -15,6 +15,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Debug WIF claims
+        env:
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ${{ env.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}
+          ACTIONS_ID_TOKEN_REQUEST_URL: ${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}
+        run: |
+          AUD="//iam.googleapis.com/projects/1085334236690/locations/global/workloadIdentityPools/github-actions/providers/github-actions"
+          echo "### Request OIDC token from GitHub"
+          RESP=$(curl -s -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${AUD}")
+          JWT=$(echo "$RESP" | jq -r .value)
+          echo "### OIDC claims"
+          echo "$JWT" | cut -d. -f2 | tr '_-' '/+' | python3 -c "import sys,base64;print(base64.b64decode(sys.stdin.read()+'===').decode())"
+          echo "### STS exchange"
+          STS=$(curl -s -X POST https://sts.googleapis.com/v1/token -H "Content-Type: application/json" -d "{\"audience\":\"${AUD}\",\"grantType\":\"urn:ietf:params:oauth:grant-type:token-exchange\",\"requestedTokenType\":\"urn:ietf:params:oauth:token-type:access_token\",\"subjectTokenType\":\"urn:ietf:params:oauth:token-type:jwt\",\"subjectToken\":\"${JWT}\",\"scope\":\"https://www.googleapis.com/auth/cloud-platform\"}")
+          echo "$STS"
+          echo "### STS token claims"
+          echo "$STS" | jq -r .access_token | cut -d. -f2 | tr '_-' '/+' | python3 -c "import sys,base64;print(base64.b64decode(sys.stdin.read()+'===').decode())" 2>/dev/null || echo "(no access_token)"
+
       - name: Authenticate to Google Cloud
         id: auth
         uses: google-github-actions/auth@v2
