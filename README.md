@@ -1,67 +1,59 @@
 # interseguro-go-api
 
-API en Go (Fiber) del Reto Interseguro. Recibe una matriz, la rota 90° en
-sentido horario, calcula su factorización QR (A = Q·R) y propaga el resultado
-a `interseguro-node-api` para obtener las estadísticas.
+API HTTP escrita en **Go** con el framework **Fiber**.
+
+Recibe una matriz, la rota 90° en sentido horario, calcula su factorización
+QR (A = Q·R) y delega el cálculo de estadísticas a un servicio externo
+(`interseguro-node-api`), propagando el token JWT del usuario.
+
+Sigue arquitectura hexagonal (dominio → aplicación → infraestructura) para
+mantener la lógica de negocio independiente de los frameworks.
 
 ## Endpoints
 
-| Método | Ruta      | Descripción                                   | Auth |
-|--------|-----------|-----------------------------------------------|------|
-| GET    | `/health` | Health check para Cloud Run.                  | No   |
-| POST   | `/process`| Procesa `{ "matrix": [...] }` y rota/QR.      | JWT  |
+| Método | Ruta      | Descripción                                                       | Auth |
+|--------|-----------|-------------------------------------------------------------------|------|
+| GET    | `/health` | Health check (usado por Cloud Run).                               | No   |
+| POST   | `/process`| Recibe `{ "matrix": [...] }` → rotación + QR + estadísticas.      | JWT  |
+
+### POST /process
+
+- `matrix`: matriz rectangular de números de punto flotante (máx. 100×100).
+- Respuesta: `message`, `result` con las matrices `original`, `rotated`,
+  `Q` y `R`, y `statistics` cuando el servicio de estadísticas responde.
+  Si el servicio externo no está disponible, devuelve el resultado local
+  con `message: "processed locally; node api unreachable"`.
 
 ## Variables de entorno
 
-| Variable        | Descripción                                   | Default               |
-|-----------------|-----------------------------------------------|-----------------------|
-| `PORT`          | Puerto HTTP (Cloud Run lo inyecta).           | `8080`                |
+| Variable        | Descripción                                   | Default                |
+|-----------------|-----------------------------------------------|------------------------|
+| `PORT`          | Puerto HTTP (Cloud Run lo inyecta).           | `8080`                 |
 | `NODE_API_URL`  | URL base de la API Node.                      | `http://localhost:3000`|
-| `CORS_ORIGIN`   | Origen CORS permitido (p. ej. el frontend).   | `*`                   |
+| `CORS_ORIGIN`   | Origen CORS permitido (p. ej. el frontend).   | `*`                    |
 | `JWT_SECRET`    | Secreto HS256 compartido con node-api.        | `interseguro-dev-secret`|
-| `JWT_ISSUER`    | Issuer del JWT.                               | `interseguro`         |
-| `JWT_AUDIENCE`  | Audience del JWT.                             | `interseguro-api`     |
+| `JWT_ISSUER`    | Issuer del JWT.                               | `interseguro`          |
+| `JWT_AUDIENCE`  | Audience del JWT.                             | `interseguro-api`      |
 
-Seguridad: matrices limitadas a 100x100 (`MATRIX_TOO_LARGE`), body limit 1 MiB,
-cabeceras de seguridad básicas y error del servicio Node enmascarado.
-
-## Despliegue
-
-```bash
-./deploy.sh                 # usa el proyecto de gcloud activo y us-central1
-./deploy.sh MI-PROYECTO     # proyecto explícito
-```
-
-El script construye la imagen con Cloud Build y la sube a Artifact Registry:
-
-```
-{region}-docker.pkg.dev/{project}/interseguro-go-api/interseguro-go-api:latest
-```
-
-## Desarrollo local
+## Ejecución local
 
 ```bash
 go run ./cmd
-# o junto con node-api: docker compose up (desde interseguro-infra)
+# o junto a las demás APIs: docker compose up (ver interseguro-infra)
 ```
 
-## Tests y cobertura
+## Despliegue
+
+- **CI (GitHub Actions):** en cada push a `main` se ejecutan los tests y se
+  construye/publica la imagen en Artifact Registry (`.github/workflows/build.yml`).
+- **Manual:** `./deploy.sh [PROJECT_ID] [REGION]` construye y sube la imagen
+  con Cloud Build.
+
+## Tests
 
 ```bash
 make test        # go test ./...
-make test-cover  # tests + cobertura agregada (>/internal/...); umbral objetivo 85%+
+make test-cover  # tests + cobertura agregada (objetivo >85%)
 make cover-html  # reporte HTML de cobertura
-make vuln        # govulncheck (requiere go install golang.org/x/vuln/cmd/govulncheck@latest)
+make vuln        # govulncheck (escaneo de vulnerabilidades)
 ```
-
-Organización de los tests por capa:
-
-| Paquete                       | Archivos de test                                     |
-|-------------------------------|------------------------------------------------------|
-| `internal/domain`             | `matrix_ops_test.go`, `domain_test.go`               |
-| `internal/application/services`| `matrix_service_test.go` (mock del puerto de salida) |
-| `internal/infrastructure/http`| `handler_test.go`, `process_test.go`, `auth_test.go`, `error_test.go` |
-| `internal/infrastructure/remote`| `node_client_test.go` (con `httptest.Server`)      |
-
-La cobertura se mide sobre `./internal/...`; `cmd/main.go` queda fuera por ser
-únicamente el punto de entrada de wiring (estándar en proyectos Go).
