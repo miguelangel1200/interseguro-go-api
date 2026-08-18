@@ -17,9 +17,13 @@ a `interseguro-node-api` para obtener las estadísticas.
 |-----------------|-----------------------------------------------|-----------------------|
 | `PORT`          | Puerto HTTP (Cloud Run lo inyecta).           | `8080`                |
 | `NODE_API_URL`  | URL base de la API Node.                      | `http://localhost:3000`|
+| `CORS_ORIGIN`   | Origen CORS permitido (p. ej. el frontend).   | `*`                   |
 | `JWT_SECRET`    | Secreto HS256 compartido con node-api.        | `interseguro-dev-secret`|
 | `JWT_ISSUER`    | Issuer del JWT.                               | `interseguro`         |
 | `JWT_AUDIENCE`  | Audience del JWT.                             | `interseguro-api`     |
+
+Seguridad: matrices limitadas a 100x100 (`MATRIX_TOO_LARGE`), body limit 1 MiB,
+cabeceras de seguridad básicas y error del servicio Node enmascarado.
 
 ## Despliegue
 

@@ -1,6 +1,9 @@
 package domain
 
-import "testing"
+import (
+	"errors"
+	"testing"
+)
 
 func TestRotate90_Empty(t *testing.T) {
 	var m Matrix
@@ -39,5 +42,35 @@ func TestErrors_Sentinels(t *testing.T) {
 	}
 	if ErrLinearDependent.Error() == "" {
 		t.Fatal("ErrLinearDependent must have a message")
+	}
+	if ErrMatrixTooLarge.Error() == "" {
+		t.Fatal("ErrMatrixTooLarge must have a message")
+	}
+}
+
+func TestNewMatrix_TooLarge(t *testing.T) {
+	// Matriz 101x1 supera el límite de filas.
+	rows := make([][]float64, MaxMatrixDimension+1)
+	for i := range rows {
+		rows[i] = []float64{1}
+	}
+	if _, err := NewMatrix(rows); !errors.Is(err, ErrMatrixTooLarge) {
+		t.Fatalf("expected ErrMatrixTooLarge for rows, got %v", err)
+	}
+
+	// Matriz 1x101 supera el límite de columnas.
+	wide := make([][]float64, 1)
+	wide[0] = make([]float64, MaxMatrixDimension+1)
+	if _, err := NewMatrix(wide); !errors.Is(err, ErrMatrixTooLarge) {
+		t.Fatalf("expected ErrMatrixTooLarge for cols, got %v", err)
+	}
+
+	// Una matriz exactamente en el límite es válida.
+	ok := make([][]float64, MaxMatrixDimension)
+	for i := range ok {
+		ok[i] = make([]float64, MaxMatrixDimension)
+	}
+	if _, err := NewMatrix(ok); err != nil {
+		t.Fatalf("expected valid matrix at limit, got %v", err)
 	}
 }

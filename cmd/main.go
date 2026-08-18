@@ -26,6 +26,10 @@ func main() {
 		nodeAPIURL = "http://localhost:3000"
 	}
 
+	// Origen permitido por CORS. En producción apunta al frontend (Pages);
+	// en desarrollo por defecto "*".
+	corsOrigin := getenv("CORS_ORIGIN", "*")
+
 	// Configuración JWT compartida con la API Node.js (mismo secreto/firma HS256).
 	authCfg := infrahttp.AuthConfig{
 		Secret:   getenv("JWT_SECRET", "interseguro-dev-secret"),
@@ -42,11 +46,13 @@ func main() {
 	app := fiber.New(fiber.Config{
 		AppName:      "Interseguro Go API",
 		ErrorHandler: infrahttp.ErrorHandler,
+		BodyLimit:    1 << 20, // 1 MiB
 	})
 
 	app.Use(logger.New())
+	app.Use(securityHeaders())
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: "*",
+		AllowOrigins: corsOrigin,
 		AllowMethods: "GET,POST,PUT,DELETE,OPTIONS",
 		AllowHeaders: "Origin,Content-Type,Authorization",
 	}))
@@ -69,4 +75,15 @@ func getenv(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+// securityHeaders agrega cabeceras de seguridad básicas a todas las respuestas.
+func securityHeaders() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		c.Set("X-Content-Type-Options", "nosniff")
+		c.Set("X-Frame-Options", "DENY")
+		c.Set("Referrer-Policy", "no-referrer")
+		c.Set("X-XSS-Protection", "0")
+		return c.Next()
+	}
 }

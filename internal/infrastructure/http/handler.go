@@ -56,8 +56,10 @@ func (h *MatrixHandler) Process(c *fiber.Ctx) error {
 	} else {
 		resp.Message = "processed locally; node api unreachable"
 		if result.NodeError != nil {
+			// No se expone el detalle interno del error (p. ej. la URL del
+			// servicio Node) al cliente; solo se indica que no está disponible.
 			resp.Error = &ErrorResponse{
-				Error: result.NodeError.Error(),
+				Error: "statistics service is temporarily unavailable",
 				Code:  "NODE_API_UNAVAILABLE",
 			}
 		}

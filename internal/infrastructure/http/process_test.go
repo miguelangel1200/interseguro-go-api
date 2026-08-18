@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/gofiber/fiber/v2"
@@ -64,6 +65,26 @@ func TestProcess_LinearDependent(t *testing.T) {
 	}
 }
 
+func TestProcess_MatrixTooLarge(t *testing.T) {
+	app := testApp(t, &mockStatisticsRepo{stats: domain.Statistics{}})
+	token := signTestToken("test-secret")
+
+	// Matriz 101x1 (JSON generado dinámicamente para no inflar el test).
+	rows := make([]string, domain.MaxMatrixDimension+1)
+	for i := range rows {
+		rows[i] = "[1]"
+	}
+	payload := `{"matrix":[` + strings.Join(rows, ",") + `]}`
+	resp := doPost(app, "/process", payload, token)
+	if resp.StatusCode != fiber.StatusRequestEntityTooLarge {
+		t.Fatalf("expected 413, got %d", resp.StatusCode)
+	}
+	body := decodeProcessBody(t, resp)
+	if body["code"] != "MATRIX_TOO_LARGE" {
+		t.Fatalf("expected MATRIX_TOO_LARGE, got %v", body)
+	}
+}
+
 func TestProcess_NodeUnreachable(t *testing.T) {
 	repo := &mockStatisticsRepo{err: errors.New("node api down")}
 	app := testApp(t, repo)
@@ -83,6 +104,13 @@ func TestProcess_NodeUnreachable(t *testing.T) {
 	}
 	if errInfo["code"] != "NODE_API_UNAVAILABLE" {
 		t.Fatalf("unexpected error code: %v", errInfo)
+	}
+	// El detalle interno (p. ej. la URL del servicio Node) no debe filtrarse.
+	if errInfo["error"] == "node api down" {
+		t.Fatalf("internal error detail leaked to the client: %v", errInfo["error"])
+	}
+	if errInfo["error"] != "statistics service is temporarily unavailable" {
+		t.Fatalf("unexpected masked error message: %v", errInfo["error"])
 	}
 	// El resultado local debe incluir las 4 matrices.
 	result, ok := body["result"].(map[string]interface{})

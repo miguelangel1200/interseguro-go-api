@@ -35,6 +35,11 @@ func mapDomainError(err error) *HTTPError {
 			Status:        fiber.StatusBadRequest,
 			ErrorResponse: ErrorResponse{Error: err.Error(), Code: "MATRIX_EMPTY"},
 		}
+	case errors.Is(err, domain.ErrMatrixTooLarge):
+		return &HTTPError{
+			Status:        fiber.StatusRequestEntityTooLarge,
+			ErrorResponse: ErrorResponse{Error: err.Error(), Code: "MATRIX_TOO_LARGE"},
+		}
 	case errors.Is(err, domain.ErrLinearDependent):
 		return &HTTPError{
 			Status:        fiber.StatusUnprocessableEntity,

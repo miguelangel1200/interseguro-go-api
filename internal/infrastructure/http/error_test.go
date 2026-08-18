@@ -27,6 +27,13 @@ func TestMapDomainError_LinearDependent(t *testing.T) {
 	}
 }
 
+func TestMapDomainError_MatrixTooLarge(t *testing.T) {
+	he := mapDomainError(domain.ErrMatrixTooLarge)
+	if he.Status != fiber.StatusRequestEntityTooLarge || he.Code != "MATRIX_TOO_LARGE" {
+		t.Fatalf("unexpected mapping: %+v", he)
+	}
+}
+
 func TestMapDomainError_ValidationError(t *testing.T) {
 	ve := &domain.ValidationError{
 		Code:     "MATRIX_NOT_RECTANGULAR",
