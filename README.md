@@ -51,6 +51,7 @@ go run ./cmd
 make test        # go test ./...
 make test-cover  # tests + cobertura agregada (>/internal/...); umbral objetivo 85%+
 make cover-html  # reporte HTML de cobertura
+make vuln        # govulncheck (requiere go install golang.org/x/vuln/cmd/govulncheck@latest)
 ```
 
 Organización de los tests por capa:
